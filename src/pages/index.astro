@@ -1,17 +1,139 @@
 ---
-
+// This runs on the server
 ---
-
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafePin PH</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* Pastel Aesthetic Overrides */
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100vw; background: #b0c4de; /* Soft pastel ocean blue */ }
+        
+        /* Tinting the map tiles to look more pastel and unified */
+        .leaflet-tile {
+            filter: sepia(20%) hue-rotate(180deg) saturate(80%) opacity(0.8);
+        }
+
+        /* Floating UI to match image_0ae941.png */
+        .floating-header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        .floating-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: #fdf5e6;
+            border: 2px solid #333;
+            border-radius: 5px;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px rgba(0,0,0,1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="floating-header">
+        <h1 class="text-4xl font-black tracking-tighter text-gray-900 drop-shadow-md">SAFE<br>PIN PH</h1>
+    </div>
+    
+    <button id="add-btn" class="floating-btn">+</button>
+
+    <div id="map"></div>
+
+    <script type="module">
+        import L from 'https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js';
+
+        // Initialize Map centered on the Philippines
+        const map = L.map('map', { zoomControl: false }).setView([12.8797, 121.7740], 6);
+
+        // Add minimalist light tiles (CartoDB Positron)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Add Zoom Control to bottom right
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Define Custom Pin Colors
+        const evacIcon = L.divIcon({
+            className: 'custom-pin',
+            html: `<div style="background-color: #a8e6cf; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #333; box-shadow: 2px 2px 0px #333;"></div>`,
+            iconSize: [16, 16]
+        });
+
+        const medicalIcon = L.divIcon({
+            className: 'custom-pin',
+            html: `<div style="background-color: #ffb7b2; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #333; box-shadow: 2px 2px 0px #333;"></div>`,
+            iconSize: [16, 16]
+        });
+
+        // Fetch and render pins
+        async function loadPins() {
+            const res = await fetch('/api/pins');
+            const pins = await res.json();
+            
+            pins.forEach(pin => {
+                const icon = pin.type === 'evacuation' ? evacIcon : medicalIcon;
+                const marker = L.marker([pin.latitude, pin.longitude], { icon }).addTo(map);
+                
+                // Popup details
+                marker.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold text-lg">${pin.type.toUpperCase()}</h3>
+                        <p class="text-xs text-gray-500">Submitted by ${pin.tally} user(s)</p>
+                        ${pin.notes ? `<p class="mt-2">${pin.notes}</p>` : ''}
+                        <hr class="my-2" />
+                        <p class="text-xs font-semibold">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
+                        <button class="text-red-500 text-xs mt-2 underline">Report Outdated</button>
+                    </div>
+                `);
+            });
+        }
+
+        loadPins();
+
+        // Handle Map Clicks for New Submissions
+        let addingMode = false;
+        document.getElementById('add-btn').addEventListener('click', () => {
+            addingMode = !addingMode;
+            document.getElementById('add-btn').style.backgroundColor = addingMode ? '#a8e6cf' : '#fdf5e6';
+            document.body.style.cursor = addingMode ? 'crosshair' : '';
+        });
+
+        map.on('click', async (e) => {
+            if (!addingMode) return;
+            
+            const type = prompt("Type? (Enter 'evacuation' or 'medical')");
+            if (!type) return;
+
+            const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
+            
+            await fetch('/api/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: e.latlng.lat, lng: e.latlng.lng, type, notes })
+            });
+
+            alert("Pin submitted for moderator approval!");
+            addingMode = false;
+            document.getElementById('add-btn').style.backgroundColor = '#fdf5e6';
+            document.body.style.cursor = '';
+        });
+    </script>
+</body>
 </html>
