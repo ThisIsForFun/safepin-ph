@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
     
     // @ts-ignore
-    const db = locals.runtime.env.DB;
+    const db = env.DB;
 
     // Check if the database is actually missing
     if (!db) {
