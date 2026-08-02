@@ -6,24 +6,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafePin PH</title>
-    
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Add Tailwind CSS compiler here -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
-        /* Pastel Aesthetic Overrides */
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #b0c4de; /* Soft pastel ocean blue */ }
+        body { margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; background: #b0c4de; }
         
-        /* Tinting the map tiles to look more pastel and unified */
         .leaflet-tile {
             filter: sepia(20%) hue-rotate(180deg) saturate(80%) opacity(0.8);
         }
 
-        /* Floating UI */
         .floating-header {
             position: absolute;
             top: 20px;
@@ -48,52 +39,109 @@
             cursor: pointer;
             box-shadow: 2px 2px 0px rgba(0,0,0,1);
         }
+
+        /* Hardcoded Neo-Brutalist Styles for Moderator UI */
+        #mod-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: #fdf5e6;
+            border: 2px solid #333;
+            padding: 8px 16px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px rgba(0,0,0,1);
+            transition: background 0.2s;
+        }
+        #mod-btn:hover {
+            background: #ffb7b2;
+        }
+
+        #mod-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 320px;
+            height: 100vh;
+            background: #fdf5e6;
+            border-right: 4px solid #333;
+            z-index: 2000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            box-shadow: 8px 0px 0px 0px rgba(0,0,0,0.2);
+        }
+
+        .mod-card {
+            border: 3px solid #333;
+            padding: 12px;
+            background: white;
+            box-shadow: 3px 3px 0px 0px rgba(0,0,0,1);
+            margin-bottom: 16px;
+        }
+
+        .btn-approve {
+            background: #a8e6cf;
+            border: 2px solid #333;
+            padding: 6px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+            width: 48%;
+        }
+        .btn-approve:hover { background: #8cd9bc; }
+
+        .btn-reject {
+            background: #ffb7b2;
+            border: 2px solid #333;
+            padding: 6px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+            width: 48%;
+        }
+        .btn-reject:hover { background: #ff9994; }
     </style>
 </head>
 <body>
 
     <div class="floating-header">
-        <h1 class="text-4xl font-black tracking-tighter text-gray-900 drop-shadow-md">SAFE<br>PIN PH</h1>
+        <h1 style="font-size: 36px; font-weight: 900; line-height: 1; letter-spacing: -0.05em; margin: 0;">SAFE<br>PIN PH</h1>
     </div>
     
     <button id="add-btn" class="floating-btn">+</button>
 
-	<!-- Moderator Button (Styled to match the + button) -->
-	<button id="mod-btn" class="absolute top-4 left-4 z-[9999] bg-[#fdf5e6] px-4 h-10 font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ffb7b2] transition-colors">
-		MODERATORS ONLY
-	</button>
+    <!-- Moderator Button -->
+    <button id="mod-btn">MODERATORS ONLY</button>
 
-	<!-- Moderator Slide-out Panel (Fixed to the left side, styled with neo-brutalism) -->
-	<div id="mod-panel" class="fixed top-0 left-0 w-80 h-full bg-[#fdf5e6] border-r-4 border-black z-[10000] transform -translate-x-full transition-transform duration-300 p-4 overflow-y-auto shadow-[8px_0px_0px_0px_rgba(0,0,0,0.2)]">
-		
-		<!-- Panel Header -->
-		<div class="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
-			<h2 class="font-black text-2xl tracking-tighter">PENDING PINS</h2>
-			<button id="close-mod" class="font-bold border-2 border-black bg-white px-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-400 transition-colors">X</button>
-		</div>
-		
-		<!-- Pending Pins Container -->
-		<div id="pending-list" class="space-y-4">
-			<!-- Pending pins will load here -->
-		</div>
-	</div>
+    <!-- Moderator Slide-out Panel -->
+    <div id="mod-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+            <h2 style="font-weight: 900; font-size: 20px; margin: 0;">PENDING PINS</h2>
+            <button id="close-mod" style="font-weight: bold; border: 2px solid #333; background: white; padding: 2px 8px; cursor: pointer; box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);">X</button>
+        </div>
+        <div id="pending-list">
+            <!-- Pending pins will load here -->
+        </div>
+    </div>
 
     <div id="map"></div>
 
-    <!-- Add the trusted Leaflet script directly -->
+    <!-- Trusted Leaflet Script -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" is:inline></script>
 
-<script is:inline>
-        // Initialize Map centered on the Philippines
+    <script is:inline>
         const map = L.map('map', { zoomControl: false }).setView([12.8797, 121.7740], 6);
 
-        // Add minimalist light tiles
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 19
         }).addTo(map);
 
-        // Add Zoom Control to bottom right
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         const evacIcon = L.divIcon({
@@ -108,7 +156,6 @@
             iconSize: [16, 16]
         });
 
-        // Wrapped in a try/catch so a database error doesn't break the whole map
         async function loadPins() {
             try {
                 const res = await fetch('/api/pins');
@@ -120,13 +167,12 @@
                     const marker = L.marker([pin.latitude, pin.longitude], { icon }).addTo(map);
                     
                     marker.bindPopup(`
-                        <div class="p-2">
-                            <h3 class="font-bold text-lg">${pin.type.toUpperCase()}</h3>
-                            <p class="text-xs text-gray-500">Submitted by ${pin.tally} user(s)</p>
-                            ${pin.notes ? `<p class="mt-2">${pin.notes}</p>` : ''}
-                            <hr class="my-2" />
-                            <p class="text-xs font-semibold">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
-                            <button class="text-red-500 text-xs mt-2 underline">Report Outdated</button>
+                        <div style="padding: 4px;">
+                            <h3 style="font-weight: bold; font-size: 16px; margin: 0 0 4px 0;">${pin.type.toUpperCase()}</h3>
+                            <p style="font-size: 11px; color: #666; margin: 0;">Submitted by ${pin.tally} user(s)</p>
+                            ${pin.notes ? `<p style="margin: 6px 0 0 0; font-size: 13px;">${pin.notes}</p>` : ''}
+                            <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;" />
+                            <p style="font-size: 10px; font-weight: bold; margin: 0;">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
                         </div>
                     `);
                 });
@@ -135,13 +181,10 @@
             }
         }
 
-        // LEAVE THIS HERE!
         loadPins();
 
-        // --- 1. THE DUAL-MODE SUBMISSION LOGIC ---
         let addingMode = false;
         
-        // Helper function to send the data to the database
         async function submitPinToDB(lat, lng, type, notes) {
             try {
                 const res = await fetch('/api/submit', {
@@ -158,26 +201,22 @@
         }
 
         document.getElementById('add-btn').addEventListener('click', async () => {
-            // Ask the user which method they want to use
             const choice = confirm("Press 'OK' to click a location on the map, or 'Cancel' to type an address manually.");
             
             if (choice) {
-                // Map Click Mode
                 addingMode = true;
                 document.getElementById('add-btn').style.backgroundColor = '#a8e6cf';
                 document.body.style.cursor = 'crosshair';
             } else {
-                // Address Search Mode
                 const address = prompt("Enter the location address or landmark (e.g., 'Luneta Park, Manila'):");
                 if (!address) return;
 
                 try {
-                    // Ask OpenStreetMap for the coordinates
                     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
                     const geoData = await geoRes.json();
                     
                     if (geoData.length === 0) {
-                        alert("Address not found! Please try a different name or use the map click feature.");
+                        alert("Address not found!");
                         return;
                     }
                     
@@ -186,7 +225,7 @@
                     
                     const type = prompt("Type? (Enter 'evacuation' or 'medical')");
                     if (!type) return;
-                    const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
+                    const notes = prompt("Any notes?");
                     
                     await submitPinToDB(lat, lng, type, notes);
                 } catch (err) {
@@ -195,12 +234,11 @@
             }
         });
 
-        // Handle Map Clicks
         map.on('click', async (e) => {
             if (!addingMode) return;
             const type = prompt("Type? (Enter 'evacuation' or 'medical')");
             if (!type) return;
-            const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
+            const notes = prompt("Any notes?");
             
             await submitPinToDB(e.latlng.lat, e.latlng.lng, type, notes);
 
@@ -209,8 +247,7 @@
             document.body.style.cursor = '';
         });
 
-
-        // --- 2. THE MODERATOR PANEL LOGIC ---
+        // Moderator Logic
         const modPanel = document.getElementById('mod-panel');
         const pendingList = document.getElementById('pending-list');
 
@@ -221,34 +258,27 @@
                 return;
             }
 
-            // Slide the panel open
             modPanel.style.transform = 'translateX(0)';
+            pendingList.innerHTML = '<p style="font-weight: bold;">Loading pending pins...</p>';
             
-            // Fetch the pending pins
-            pendingList.innerHTML = '<p class="font-bold animate-pulse">Loading pending pins...</p>';
             const res = await fetch('/api/pending');
             const pins = await res.json();
             
             if (pins.length === 0) {
-                pendingList.innerHTML = '<p class="font-bold text-gray-500 italic">No pending pins right now.</p>';
+                pendingList.innerHTML = '<p style="font-style: italic; color: #666;">No pending pins right now.</p>';
                 return;
             }
 
-            // Generate beautifully styled neo-brutalist cards
             pendingList.innerHTML = pins.map(pin => `
-                <div class="border-4 border-black p-3 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4" id="pin-card-${pin.id}">
-                    <p class="font-black uppercase text-lg border-b-2 border-black pb-1 mb-2 tracking-tight">${pin.type}</p>
-                    <p class="text-xs font-bold mb-1">LAT: ${pin.latitude.toFixed(4)}</p>
-                    <p class="text-xs font-bold border-b-2 border-black pb-2 mb-2">LNG: ${pin.longitude.toFixed(4)}</p>
-                    <p class="text-sm font-medium mb-4">NOTES: ${pin.notes || 'None'}</p>
+                <div class="mod-card" id="pin-card-${pin.id}">
+                    <p style="font-weight: 900; font-size: 16px; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 2px solid #333; padding-bottom: 4px;">${pin.type}</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 0 0 4px 0;">LAT: ${pin.latitude.toFixed(4)}</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0;">LNG: ${pin.longitude.toFixed(4)}</p>
+                    <p style="font-size: 13px; margin: 0 0 12px 0;">NOTES: ${pin.notes || 'None'}</p>
                     
-                    <div class="flex gap-2">
-                        <button onclick="approvePin(${pin.id})" class="flex-1 bg-[#a8e6cf] border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-green-400 transition-colors">
-                            APPROVE
-                        </button>
-                        <button onclick="rejectPin(${pin.id})" class="flex-1 bg-[#ffb7b2] border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-400 transition-colors">
-                            REJECT
-                        </button>
+                    <div style="display: flex; justify-content: space-between;">
+                        <button onclick="approvePin(${pin.id})" class="btn-approve">APPROVE</button>
+                        <button onclick="rejectPin(${pin.id})" class="btn-reject">REJECT</button>
                     </div>
                 </div>
             `).join('');
@@ -258,7 +288,6 @@
             modPanel.style.transform = 'translateX(-100%)';
         });
 
-        // Approve Function
         window.approvePin = async function(id) {
             try {
                 const res = await fetch('/api/approve', {
@@ -266,42 +295,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
                 });
-                
                 if (res.ok) {
-                    alert("Pin approved! It is now live on the map.");
+                    alert("Pin approved!");
                     location.reload(); 
                 }
-            } catch (err) {
-                alert("Approval failed.");
-            }
+            } catch (err) { alert("Approval failed."); }
         };
 
-        // Reject Function
         window.rejectPin = async function(id) {
-            const confirmReject = confirm("Are you sure you want to delete this submission?");
-            if (!confirmReject) return;
-
+            if (!confirm("Delete this submission?")) return;
             try {
                 const res = await fetch('/api/reject', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id })
                 });
-                
                 if (res.ok) {
-                    // Remove the card from the UI instantly
                     document.getElementById(`pin-card-${id}`).remove();
-                    
-                    // If that was the last pin, show the empty message
-                    if (document.getElementById('pending-list').children.length === 0) {
-                        document.getElementById('pending-list').innerHTML = '<p class="font-bold text-gray-500 italic">No pending pins right now.</p>';
+                    if (pendingList.children.length === 0) {
+                        pendingList.innerHTML = '<p style="font-style: italic; color: #666;">No pending pins right now.</p>';
                     }
-                } else {
-                    alert("Failed to reject pin.");
                 }
-            } catch (err) {
-                alert("Rejection failed.");
-            }
+            } catch (err) { alert("Rejection failed."); }
         };
     </script>
 </body>
