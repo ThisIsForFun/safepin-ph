@@ -134,10 +134,14 @@
                     body: JSON.stringify({ lat: e.latlng.lat, lng: e.latlng.lng, type, notes })
                 });
 
+                // Read the response from our upgraded API
+                const result = await res.json(); 
+
                 if (res.ok) {
                     alert("Pin submitted for moderator approval!");
                 } else {
-                    alert("Error! Please check if your Live Database is bound in Cloudflare.");
+                    // Show the exact backend error on the screen!
+                    alert("Live Server Error: " + result.error); 
                 }
             } catch(error) {
                 alert("Submission completely failed.");
