@@ -52,17 +52,21 @@
     
     <button id="add-btn" class="floating-btn">+</button>
 
-	<!-- Moderator Button -->
-	<button id="mod-btn" class="absolute top-4 left-4 z-[9999] bg-white px-4 py-2 font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-200 transition-colors">
-		Moderators Only
+	<!-- Moderator Button (Styled to match the + button) -->
+	<button id="mod-btn" class="absolute top-4 left-4 z-[9999] bg-[#fdf5e6] px-4 h-10 font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ffb7b2] transition-colors">
+		MODERATORS ONLY
 	</button>
 
-	<!-- Moderator Slide-out Panel -->
-	<div id="mod-panel" class="fixed top-0 left-0 w-80 h-full bg-white border-r-4 border-black z-[10000] transform -translate-x-full transition-transform duration-300 p-4 overflow-y-auto shadow-2xl">
-		<div class="flex justify-between items-center mb-6 border-b-2 border-black pb-2">
-			<h2 class="font-bold text-xl">Pending Pins</h2>
-			<button id="close-mod" class="font-bold text-red-500 hover:scale-110">Close X</button>
+	<!-- Moderator Slide-out Panel (Fixed to the left side, styled with neo-brutalism) -->
+	<div id="mod-panel" class="fixed top-0 left-0 w-80 h-full bg-[#fdf5e6] border-r-4 border-black z-[10000] transform -translate-x-full transition-transform duration-300 p-4 overflow-y-auto shadow-[8px_0px_0px_0px_rgba(0,0,0,0.2)]">
+		
+		<!-- Panel Header -->
+		<div class="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+			<h2 class="font-black text-2xl tracking-tighter">PENDING PINS</h2>
+			<button id="close-mod" class="font-bold border-2 border-black bg-white px-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-400 transition-colors">X</button>
 		</div>
+		
+		<!-- Pending Pins Container -->
 		<div id="pending-list" class="space-y-4">
 			<!-- Pending pins will load here -->
 		</div>
@@ -205,7 +209,6 @@
         const pendingList = document.getElementById('pending-list');
 
         document.getElementById('mod-btn').addEventListener('click', async () => {
-            // Presentation Theater: Add a fake password prompt to show security logic
             const pass = prompt("Enter Moderator Password:");
             if (pass !== "admin123") {
                 alert("Incorrect Password!");
@@ -216,24 +219,31 @@
             modPanel.style.transform = 'translateX(0)';
             
             // Fetch the pending pins
-            pendingList.innerHTML = '<p>Loading pending pins...</p>';
+            pendingList.innerHTML = '<p class="font-bold animate-pulse">Loading pending pins...</p>';
             const res = await fetch('/api/pending');
             const pins = await res.json();
             
             if (pins.length === 0) {
-                pendingList.innerHTML = '<p class="text-gray-500 italic">No pending pins right now.</p>';
+                pendingList.innerHTML = '<p class="font-bold text-gray-500 italic">No pending pins right now.</p>';
                 return;
             }
 
-            // Generate the cards for the moderator to review
+            // Generate beautifully styled neo-brutalist cards
             pendingList.innerHTML = pins.map(pin => `
-                <div class="border-2 border-black p-3 rounded bg-gray-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4" id="pin-card-${pin.id}">
-                    <p class="font-bold uppercase text-sm">${pin.type}</p>
-                    <p class="text-xs text-gray-600 border-b border-gray-300 pb-2 mb-2">Lat: ${pin.latitude.toFixed(4)}, Lng: ${pin.longitude.toFixed(4)}</p>
-                    <p class="text-sm mb-3">Notes: ${pin.notes || 'None'}</p>
-                    <button onclick="approvePin(${pin.id})" class="w-full bg-green-300 border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-green-400">
-                        Approve Pin
-                    </button>
+                <div class="border-4 border-black p-3 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4" id="pin-card-${pin.id}">
+                    <p class="font-black uppercase text-lg border-b-2 border-black pb-1 mb-2 tracking-tight">${pin.type}</p>
+                    <p class="text-xs font-bold mb-1">LAT: ${pin.latitude.toFixed(4)}</p>
+                    <p class="text-xs font-bold border-b-2 border-black pb-2 mb-2">LNG: ${pin.longitude.toFixed(4)}</p>
+                    <p class="text-sm font-medium mb-4">NOTES: ${pin.notes || 'None'}</p>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="approvePin(${pin.id})" class="flex-1 bg-[#a8e6cf] border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-green-400 transition-colors">
+                            APPROVE
+                        </button>
+                        <button onclick="rejectPin(${pin.id})" class="flex-1 bg-[#ffb7b2] border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-400 transition-colors">
+                            REJECT
+                        </button>
+                    </div>
                 </div>
             `).join('');
         });
@@ -242,7 +252,7 @@
             modPanel.style.transform = 'translateX(-100%)';
         });
 
-        // Function attached to the Approve button inside the card
+        // Approve Function
         window.approvePin = async function(id) {
             try {
                 const res = await fetch('/api/approve', {
@@ -252,15 +262,39 @@
                 });
                 
                 if (res.ok) {
-                    // Remove the card from the sidebar
-                    document.getElementById(`pin-card-${id}`).remove();
-                    
-                    // Reload the public map to show the newly approved pin!
                     alert("Pin approved! It is now live on the map.");
                     location.reload(); 
                 }
             } catch (err) {
                 alert("Approval failed.");
+            }
+        };
+
+        // Reject Function
+        window.rejectPin = async function(id) {
+            const confirmReject = confirm("Are you sure you want to delete this submission?");
+            if (!confirmReject) return;
+
+            try {
+                const res = await fetch('/api/reject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                if (res.ok) {
+                    // Remove the card from the UI instantly
+                    document.getElementById(`pin-card-${id}`).remove();
+                    
+                    // If that was the last pin, show the empty message
+                    if (document.getElementById('pending-list').children.length === 0) {
+                        document.getElementById('pending-list').innerHTML = '<p class="font-bold text-gray-500 italic">No pending pins right now.</p>';
+                    }
+                } else {
+                    alert("Failed to reject pin.");
+                }
+            } catch (err) {
+                alert("Rejection failed.");
             }
         };
     </script>
