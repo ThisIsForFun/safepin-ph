@@ -40,7 +40,6 @@
             box-shadow: 2px 2px 0px rgba(0,0,0,1);
         }
 
-        /* Hardcoded Neo-Brutalist Styles for Moderator UI */
         #mod-btn {
             position: absolute;
             top: 20px;
@@ -55,9 +54,7 @@
             box-shadow: 2px 2px 0px rgba(0,0,0,1);
             transition: background 0.2s;
         }
-        #mod-btn:hover {
-            background: #ffb7b2;
-        }
+        #mod-btn:hover { background: #ffb7b2; }
 
         #mod-panel {
             position: fixed;
@@ -105,6 +102,20 @@
             width: 48%;
         }
         .btn-reject:hover { background: #ff9994; }
+
+        /* Popup Delete Button styling */
+        .btn-delete-popup {
+            background: #ffb7b2;
+            border: 2px solid #333;
+            padding: 4px 8px;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+            margin-top: 8px;
+            width: 100%;
+        }
+        .btn-delete-popup:hover { background: #ff9994; }
     </style>
 </head>
 <body>
@@ -115,23 +126,18 @@
     
     <button id="add-btn" class="floating-btn">+</button>
 
-    <!-- Moderator Button -->
     <button id="mod-btn">MODERATORS ONLY</button>
 
-    <!-- Moderator Slide-out Panel -->
     <div id="mod-panel">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
             <h2 style="font-weight: 900; font-size: 20px; margin: 0;">PENDING PINS</h2>
             <button id="close-mod" style="font-weight: bold; border: 2px solid #333; background: white; padding: 2px 8px; cursor: pointer; box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);">X</button>
         </div>
-        <div id="pending-list">
-            <!-- Pending pins will load here -->
-        </div>
+        <div id="pending-list"></div>
     </div>
 
     <div id="map"></div>
 
-    <!-- Trusted Leaflet Script -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" is:inline></script>
 
     <script is:inline>
@@ -159,7 +165,7 @@
         async function loadPins() {
             try {
                 const res = await fetch('/api/pins');
-                if (!res.ok) throw new Error("Database not connected properly.");
+                if (!res.ok) throw new Error("Database error");
                 const pins = await res.json();
                 
                 pins.forEach(pin => {
@@ -167,99 +173,91 @@
                     const marker = L.marker([pin.latitude, pin.longitude], { icon }).addTo(map);
                     
                     marker.bindPopup(`
-                        <div style="padding: 4px;">
-                            <h3 style="font-weight: bold; font-size: 16px; margin: 0 0 4px 0;">${pin.type.toUpperCase()}</h3>
-                            <p style="font-size: 11px; color: #666; margin: 0;">Submitted by ${pin.tally} user(s)</p>
-                            ${pin.notes ? `<p style="margin: 6px 0 0 0; font-size: 13px;">${pin.notes}</p>` : ''}
-                            <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;" />
-                            <p style="font-size: 10px; font-weight: bold; margin: 0;">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
+                        <div style="padding: 4px; min-width: 160px;">
+                            <h3 style="font-weight: bold; font-size: 15px; margin: 0 0 2px 0; text-transform: uppercase;">${pin.name || pin.type}</h3>
+                            <p style="font-size: 11px; color: #555; margin: 0 0 6px 0;">Submitted by ${pin.tally} user(s)</p>
+                            <p style="font-size: 12px; font-weight: 600; margin: 0 0 6px 0;">📍 ${pin.address || 'N/A'}</p>
+                            ${pin.notes ? `<p style="margin: 0 0 6px 0; font-size: 12px; font-style: italic;">"${pin.notes}"</p>` : ''}
+                            <hr style="margin: 6px 0; border: 0; border-top: 1px solid #ddd;" />
+                            <p style="font-size: 10px; font-weight: bold; margin: 0 0 4px 0;">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
+                            <button onclick="deletePin(${pin.id})" class="btn-delete-popup">DELETE PIN</button>
                         </div>
                     `);
                 });
-            } catch (error) {
-                console.error(error);
-            }
+            } catch (error) { console.error(error); }
         }
 
         loadPins();
 
         let addingMode = false;
         
-        async function submitPinToDB(lat, lng, type, notes) {
+        async function submitPinToDB(lat, lng, type, name, address, notes) {
             try {
                 const res = await fetch('/api/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lat, lng, type, notes })
+                    body: JSON.stringify({ lat, lng, type, name, address, notes })
                 });
                 const result = await res.json(); 
                 if (res.ok) alert("Pin submitted for moderator approval!");
-                else alert("Live Server Error: " + result.error); 
-            } catch(error) {
-                alert("Submission completely failed.");
-            }
+                else alert("Error: " + result.error); 
+            } catch(error) { alert("Submission failed."); }
         }
 
         document.getElementById('add-btn').addEventListener('click', async () => {
             const choice = confirm("Press 'OK' to click a location on the map, or 'Cancel' to type an address manually.");
             
+            const name = prompt("Enter Evacuation/Site Name (e.g., 'Alabang Barangay Hall'):");
+            if (!name) return;
+
+            const type = prompt("Type? (Enter 'evacuation' or 'medical')");
+            if (!type) return;
+
+            const notes = prompt("Any notes? (e.g., Pet friendly)");
+
             if (choice) {
                 addingMode = true;
+                window.pendingPinData = { type, name, notes };
                 document.getElementById('add-btn').style.backgroundColor = '#a8e6cf';
                 document.body.style.cursor = 'crosshair';
+                alert("Now click the exact spot on the map!");
             } else {
-                const address = prompt("Enter the location address or landmark (e.g., 'Luneta Park, Manila'):");
+                const address = prompt("Enter the street address or landmark:");
                 if (!address) return;
 
                 try {
                     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
                     const geoData = await geoRes.json();
+                    if (geoData.length === 0) { alert("Address not found!"); return; }
                     
-                    if (geoData.length === 0) {
-                        alert("Address not found!");
-                        return;
-                    }
-                    
-                    const lat = parseFloat(geoData[0].lat);
-                    const lng = parseFloat(geoData[0].lon);
-                    
-                    const type = prompt("Type? (Enter 'evacuation' or 'medical')");
-                    if (!type) return;
-                    const notes = prompt("Any notes?");
-                    
-                    await submitPinToDB(lat, lng, type, notes);
-                } catch (err) {
-                    alert("Network error while searching for address.");
-                }
+                    await submitPinToDB(parseFloat(geoData[0].lat), parseFloat(geoData[0].lon), type, name, address, notes);
+                } catch (err) { alert("Network error."); }
             }
         });
 
         map.on('click', async (e) => {
             if (!addingMode) return;
-            const type = prompt("Type? (Enter 'evacuation' or 'medical')");
-            if (!type) return;
-            const notes = prompt("Any notes?");
+            const data = window.pendingPinData;
+            // Reverse geocode rough address for map clicks
+            const address = `Lat: ${e.latlng.lat.toFixed(3)}, Lng: ${e.latlng.lng.toFixed(3)}`;
             
-            await submitPinToDB(e.latlng.lat, e.latlng.lng, type, notes);
+            await submitPinToDB(e.latlng.lat, e.latlng.lng, data.type, data.name, address, data.notes);
 
             addingMode = false;
             document.getElementById('add-btn').style.backgroundColor = '#fdf5e6';
             document.body.style.cursor = '';
         });
 
-        // Moderator Logic
+        // Moderator Panel
         const modPanel = document.getElementById('mod-panel');
         const pendingList = document.getElementById('pending-list');
 
         document.getElementById('mod-btn').addEventListener('click', async () => {
             const pass = prompt("Enter Moderator Password:");
-            if (pass !== "admin123") {
-                alert("Incorrect Password!");
-                return;
-            }
+            if (pass !== "admin123") { alert("Incorrect Password!"); return; }
 
             modPanel.style.transform = 'translateX(0)';
-            pendingList.innerHTML = '<p style="font-weight: bold;">Loading pending pins...</p>';
+            pendingList.innerHTML = '<p style="font-weight: bold;">Loading...</p>';
             
             const res = await fetch('/api/pending');
             const pins = await res.json();
@@ -271,9 +269,9 @@
 
             pendingList.innerHTML = pins.map(pin => `
                 <div class="mod-card" id="pin-card-${pin.id}">
-                    <p style="font-weight: 900; font-size: 16px; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 2px solid #333; padding-bottom: 4px;">${pin.type}</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 0 0 4px 0;">LAT: ${pin.latitude.toFixed(4)}</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 0 0 8px 0;">LNG: ${pin.longitude.toFixed(4)}</p>
+                    <p style="font-weight: 900; font-size: 16px; text-transform: uppercase; margin: 0 0 4px 0; border-bottom: 2px solid #333; padding-bottom: 4px;">${pin.name}</p>
+                    <p style="font-size: 11px; font-weight: bold; margin: 0 0 4px 0; color: #555;">TYPE: ${pin.type.toUpperCase()}</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 0 0 4px 0;">📍 ${pin.address}</p>
                     <p style="font-size: 13px; margin: 0 0 12px 0;">NOTES: ${pin.notes || 'None'}</p>
                     
                     <div style="display: flex; justify-content: space-between;">
@@ -289,34 +287,37 @@
         });
 
         window.approvePin = async function(id) {
-            try {
-                const res = await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
-                if (res.ok) {
-                    alert("Pin approved!");
-                    location.reload(); 
-                }
-            } catch (err) { alert("Approval failed."); }
+            const res = await fetch('/api/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            if (res.ok) { alert("Pin approved!"); location.reload(); }
         };
 
         window.rejectPin = async function(id) {
-            if (!confirm("Delete this submission?")) return;
-            try {
-                const res = await fetch('/api/reject', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
-                if (res.ok) {
-                    document.getElementById(`pin-card-${id}`).remove();
-                    if (pendingList.children.length === 0) {
-                        pendingList.innerHTML = '<p style="font-style: italic; color: #666;">No pending pins right now.</p>';
-                    }
-                }
-            } catch (err) { alert("Rejection failed."); }
+            if (!confirm("Delete submission?")) return;
+            const res = await fetch('/api/reject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            if (res.ok) { document.getElementById(`pin-card-${id}`).remove(); }
+        };
+
+        window.deletePin = async function(id) {
+            if (!confirm("Are you sure you want to delete this live pin from the map?")) return;
+            const res = await fetch('/api/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            if (res.ok) {
+                alert("Pin deleted successfully.");
+                location.reload();
+            } else {
+                alert("Failed to delete pin.");
+            }
         };
     </script>
 </body>

@@ -4,13 +4,11 @@ import { env } from 'cloudflare:workers';
 export const POST: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
-    
     // @ts-ignore
     const db = env.DB;
 
-    // Check if the database is actually missing
     if (!db) {
-        return new Response(JSON.stringify({ error: "DB binding is missing from the live server." }), { status: 500 });
+        return new Response(JSON.stringify({ error: "DB binding is missing." }), { status: 500 });
     }
 
     const existingPin = await db.prepare(`
@@ -23,13 +21,12 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ success: true, message: "Tally updated" }));
     } else {
       await db.prepare(`
-        INSERT INTO pins (latitude, longitude, type, notes)
-        VALUES (?, ?, ?, ?)
-      `).bind(data.lat, data.lng, data.type, data.notes || '').run();
+        INSERT INTO pins (latitude, longitude, type, name, address, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(data.lat, data.lng, data.type, data.name || 'Unnamed Site', data.address || 'Coordinates Pin', data.notes || '').run();
       return new Response(JSON.stringify({ success: true, message: "Pin submitted for approval" }));
     }
   } catch (e: any) {
-    // If anything breaks, send the exact error message to the frontend
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
 };
