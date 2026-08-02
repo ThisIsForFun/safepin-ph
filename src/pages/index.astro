@@ -180,7 +180,7 @@
                             ${pin.notes ? `<p style="margin: 0 0 6px 0; font-size: 12px; font-style: italic;">"${pin.notes}"</p>` : ''}
                             <hr style="margin: 6px 0; border: 0; border-top: 1px solid #ddd;" />
                             <p style="font-size: 10px; font-weight: bold; margin: 0 0 4px 0;">Updated: ${new Date(pin.last_updated).toLocaleDateString()}</p>
-                            <button onclick="deletePin(${pin.id})" class="btn-delete-popup">DELETE PIN</button>
+                            <button onclick="deletePin(${pin.id})" style="background: #ffb7b2; border: 2px solid #333; padding: 6px 12px; font-weight: bold; font-size: 11px; cursor: pointer; box-shadow: 2px 2px 0px 0px rgba(0,0,0,1); margin-top: 8px; width: 100%;">DELETE PIN</button>
                         </div>
                     `);
                 });
