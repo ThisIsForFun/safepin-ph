@@ -52,12 +52,28 @@
     
     <button id="add-btn" class="floating-btn">+</button>
 
+	<!-- Moderator Button -->
+	<button id="mod-btn" class="absolute top-4 left-4 z-[9999] bg-white px-4 py-2 font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-200 transition-colors">
+		Moderators Only
+	</button>
+
+	<!-- Moderator Slide-out Panel -->
+	<div id="mod-panel" class="fixed top-0 left-0 w-80 h-full bg-white border-r-4 border-black z-[10000] transform -translate-x-full transition-transform duration-300 p-4 overflow-y-auto shadow-2xl">
+		<div class="flex justify-between items-center mb-6 border-b-2 border-black pb-2">
+			<h2 class="font-bold text-xl">Pending Pins</h2>
+			<button id="close-mod" class="font-bold text-red-500 hover:scale-110">Close X</button>
+		</div>
+		<div id="pending-list" class="space-y-4">
+			<!-- Pending pins will load here -->
+		</div>
+	</div>
+
     <div id="map"></div>
 
     <!-- Add the trusted Leaflet script directly -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" is:inline></script>
 
-    <script is:inline>
+<script is:inline>
         // Initialize Map centered on the Philippines
         const map = L.map('map', { zoomControl: false }).setView([12.8797, 121.7740], 6);
 
@@ -109,48 +125,144 @@
             }
         }
 
+        // LEAVE THIS HERE!
         loadPins();
 
-        // Handle Map Clicks for New Submissions
+        // --- 1. THE DUAL-MODE SUBMISSION LOGIC ---
         let addingMode = false;
-        document.getElementById('add-btn').addEventListener('click', () => {
-            addingMode = !addingMode;
-            document.getElementById('add-btn').style.backgroundColor = addingMode ? '#a8e6cf' : '#fdf5e6';
-            document.body.style.cursor = addingMode ? 'crosshair' : '';
-        });
-
-        map.on('click', async (e) => {
-            if (!addingMode) return;
-            
-            const type = prompt("Type? (Enter 'evacuation' or 'medical')");
-            if (!type) return;
-
-            const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
-            
+        
+        // Helper function to send the data to the database
+        async function submitPinToDB(lat, lng, type, notes) {
             try {
                 const res = await fetch('/api/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lat: e.latlng.lat, lng: e.latlng.lng, type, notes })
+                    body: JSON.stringify({ lat, lng, type, notes })
                 });
-
-                // Read the response from our upgraded API
                 const result = await res.json(); 
-
-                if (res.ok) {
-                    alert("Pin submitted for moderator approval!");
-                } else {
-                    // Show the exact backend error on the screen!
-                    alert("Live Server Error: " + result.error); 
-                }
+                if (res.ok) alert("Pin submitted for moderator approval!");
+                else alert("Live Server Error: " + result.error); 
             } catch(error) {
                 alert("Submission completely failed.");
             }
+        }
+
+        document.getElementById('add-btn').addEventListener('click', async () => {
+            // Ask the user which method they want to use
+            const choice = confirm("Press 'OK' to click a location on the map, or 'Cancel' to type an address manually.");
+            
+            if (choice) {
+                // Map Click Mode
+                addingMode = true;
+                document.getElementById('add-btn').style.backgroundColor = '#a8e6cf';
+                document.body.style.cursor = 'crosshair';
+            } else {
+                // Address Search Mode
+                const address = prompt("Enter the location address or landmark (e.g., 'Luneta Park, Manila'):");
+                if (!address) return;
+
+                try {
+                    // Ask OpenStreetMap for the coordinates
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+                    const geoData = await geoRes.json();
+                    
+                    if (geoData.length === 0) {
+                        alert("Address not found! Please try a different name or use the map click feature.");
+                        return;
+                    }
+                    
+                    const lat = parseFloat(geoData[0].lat);
+                    const lng = parseFloat(geoData[0].lon);
+                    
+                    const type = prompt("Type? (Enter 'evacuation' or 'medical')");
+                    if (!type) return;
+                    const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
+                    
+                    await submitPinToDB(lat, lng, type, notes);
+                } catch (err) {
+                    alert("Network error while searching for address.");
+                }
+            }
+        });
+
+        // Handle Map Clicks
+        map.on('click', async (e) => {
+            if (!addingMode) return;
+            const type = prompt("Type? (Enter 'evacuation' or 'medical')");
+            if (!type) return;
+            const notes = prompt("Any notes? (e.g., Pet friendly, Under renovation)");
+            
+            await submitPinToDB(e.latlng.lat, e.latlng.lng, type, notes);
 
             addingMode = false;
             document.getElementById('add-btn').style.backgroundColor = '#fdf5e6';
             document.body.style.cursor = '';
         });
+
+
+        // --- 2. THE MODERATOR PANEL LOGIC ---
+        const modPanel = document.getElementById('mod-panel');
+        const pendingList = document.getElementById('pending-list');
+
+        document.getElementById('mod-btn').addEventListener('click', async () => {
+            // Presentation Theater: Add a fake password prompt to show security logic
+            const pass = prompt("Enter Moderator Password:");
+            if (pass !== "admin123") {
+                alert("Incorrect Password!");
+                return;
+            }
+
+            // Slide the panel open
+            modPanel.style.transform = 'translateX(0)';
+            
+            // Fetch the pending pins
+            pendingList.innerHTML = '<p>Loading pending pins...</p>';
+            const res = await fetch('/api/pending');
+            const pins = await res.json();
+            
+            if (pins.length === 0) {
+                pendingList.innerHTML = '<p class="text-gray-500 italic">No pending pins right now.</p>';
+                return;
+            }
+
+            // Generate the cards for the moderator to review
+            pendingList.innerHTML = pins.map(pin => `
+                <div class="border-2 border-black p-3 rounded bg-gray-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4" id="pin-card-${pin.id}">
+                    <p class="font-bold uppercase text-sm">${pin.type}</p>
+                    <p class="text-xs text-gray-600 border-b border-gray-300 pb-2 mb-2">Lat: ${pin.latitude.toFixed(4)}, Lng: ${pin.longitude.toFixed(4)}</p>
+                    <p class="text-sm mb-3">Notes: ${pin.notes || 'None'}</p>
+                    <button onclick="approvePin(${pin.id})" class="w-full bg-green-300 border-2 border-black py-1 font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-green-400">
+                        Approve Pin
+                    </button>
+                </div>
+            `).join('');
+        });
+
+        document.getElementById('close-mod').addEventListener('click', () => {
+            modPanel.style.transform = 'translateX(-100%)';
+        });
+
+        // Function attached to the Approve button inside the card
+        window.approvePin = async function(id) {
+            try {
+                const res = await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                if (res.ok) {
+                    // Remove the card from the sidebar
+                    document.getElementById(`pin-card-${id}`).remove();
+                    
+                    // Reload the public map to show the newly approved pin!
+                    alert("Pin approved! It is now live on the map.");
+                    location.reload(); 
+                }
+            } catch (err) {
+                alert("Approval failed.");
+            }
+        };
     </script>
 </body>
 </html>
