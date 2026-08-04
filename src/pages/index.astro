@@ -116,6 +116,43 @@
             width: 100%;
         }
         .btn-delete-popup:hover { background: #ff9994; }
+
+        /* Map Legend Styling */
+        .legend-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            z-index: 1000;
+            background: #fdf5e6;
+            border: 2px solid #333;
+            padding: 12px;
+            box-shadow: 3px 3px 0px rgba(0,0,0,1);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+        .legend-dot-green {
+            background-color: #a8e6cf;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .legend-dot-red {
+            background-color: #ffb7b2;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +174,18 @@
     </div>
 
     <div id="map"></div>
+
+    <div class="legend-panel">
+        <p style="font-weight: 900; font-size: 13px; margin: 0 0 6px 0; text-transform: uppercase; border-bottom: 2px solid #333; padding-bottom: 4px;">Legend</p>
+        <div class="legend-item">
+            <div class="legend-dot-green"></div>
+            <span>Evacuation Area</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot-red"></div>
+            <span>Medical Center</span>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" is:inline></script>
 
