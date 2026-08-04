@@ -257,7 +257,7 @@
         document.getElementById('add-btn').addEventListener('click', async () => {
             const choice = confirm("Press 'OK' to click a location on the map, or 'Cancel' to type an address manually.");
             
-            const name = prompt("Enter Evacuation/Site Name (e.g., 'Alabang Barangay Hall'):");
+            const name = prompt("Enter Evacuation/Site Name:");
             if (!name) return;
 
             const type = prompt("Type? (Enter 'evacuation' or 'medical')");
